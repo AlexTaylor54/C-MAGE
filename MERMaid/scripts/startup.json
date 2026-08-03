@@ -1,0 +1,28 @@
+{
+    "keys": ["Entry", "Anode", "Cathode", "Electrolytes", "Solvents", "Duration", "Air/Inert", "Yield", "Footnote"],
+    "new_keys": {
+        "NEW_KEY1": "description of new key",
+        "NEW_KEY2": "description of new_key2"
+    },
+    "pdf_dir": "/C-MAGE/MERMaid/pdfdir/",
+    "image_dir": "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_VH_RESULTS",
+    "json_dir": "/path/to/directory/to/store/json/output", 
+    "graph_dir": "/path/to/directory/to/store/graph/files",
+    "prompt_dir": "/path/to/directory/holding/prompts",
+    "model_size": "base",
+
+
+    "default_image_dir": "Results/extracted_images/",
+    "default_json_dir": "Results/jsons/",
+    "default_graph_dir": "Results/graphs/",
+
+    "kgwizard": {
+	"address": "ws://localhost",
+	"port": 8182,
+	"graph_name": "g",
+	"schema": "echem",
+	"dynamic_start": 1,
+	"dynamic_steps": 5,
+	"dynamic_max_workers": 15
+    }
+  }

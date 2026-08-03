@@ -1,0 +1,321 @@
+#+TITLE: kgwizard
+#+STARTUP: showall
+
+* Automated Database Parser and Transformer
+
+kgwizard is a Python command-line tool designed to:
+- Transform JSONs from data raider into an intermediate format.
+- Parse that intermediate format and optionally upload it to a JanusGraph database.
+- Support dynamic and static parallelism for efficient processing.
+- Perform RAG (Retrieval-Augmented Generation) lookups against an existing graph to substitute known nodes.
+
+* Table of Contents
+1. [[#features][Features]]
+2. [[#requirements][Requirements]]
+3. [[#installation][Installation]]
+4. [[#usage][Usage]]
+   - [[#transform-command][Transform Command]]
+   - [[#parse-command][Parse Command]]
+5. [[#environment-variables][Environment Variables]]
+6. [[#extending][Extending KGWizard]]
+   - [[#template][Template]]
+   - [[#new-classes][Add new classes]]
+   - [[#schema-use][Select schema]]
+   - [[#prompt-edit][Adjusting the LLM instructions]]
+7. [[#contributing][Contributing]]
+8. [[#license][License]]
+
+* Features
+:PROPERTIES:
+:CUSTOM_ID: features
+:END:
+
+- *Dynamic Parallel Execution* using Python’s ~multiprocessing~ to speed up large-scale transformations.
+- *RAG Integration* to retrieve existing nodes in the JanusGraph database for substituting references.
+- *Modular* with separate subcommands for transformation and parsing.
+- *Schema Loading* at runtime, either from built-in defaults or user-provided schema files.
+- *Fallback for Older Typing Features* ensures compatibility with Python 3.9+.
+
+* Requirements
+:PROPERTIES:
+:CUSTOM_ID: requirements
+:END:
+
+- *Python 3.9 or higher*
+
+  (Older versions may not work due to dictionary merge operators (~|=~), PEP 585 annotations like ~list[str]~, etc.)
+
+- Additional external libraries (installed automatically when using ~pip~):
+  - [[https://pypi.org/project/numpy/][numpy]] (required for dynamic parallel pool size estimation)
+  - [[https://pypi.org/project/gremlinpython/][gremlin_python]] (Required to communicate with JanusGraph)
+  - [[https://pypi.org/project/openai/][openai]] (Required for prompt building and RAG functionality)
+
+A running JanusGraph server is also needed if you plan to upload data into a graph database (refer to Installations)
+
+* Installation
+:PROPERTIES:
+:CUSTOM_ID: installation
+:END:
+
+1. *Clone the repository*:
+#+begin_src bash
+  git clone https://github.com/aspuru-guzik-group/MERMaid.git
+  cd MERMaid
+#+end_src
+
+2. *Install kgwizard package*:
+#+begin_src bash
+  pip install -e .[kgwizard]
+#+end_src
+
+Use the ~-e~ flag command to make changes on the prompt files inside ~prompt/assets~.
+
+3. *Setup JanusGraph Server*
+   - In order to setup the JanusGraph server you will need to install both Java 8 SE and JanusGraph
+   - To install Java 8 SE go to the [[https://www.oracle.com/ca-en/java/technologies/javase/javase8-archive-downloads.html][Oracle website]] and download the appropriate file. Follow the installation provided.
+   - To install JanusGraph go to the [[https://github.com/JanusGraph/janusgraph/releases][JanusGraph install page]] and download janusgraph-1.1.0.zip. Note that any version should work, however KGWizard was tested using version 1.1.0.
+   - Then unzip the zip file:
+#+begin_src bash
+  unzip janusgraph-1.1.0.zip
+  cd janusgraph-1.1.0
+#+end_src
+4. *Start JanuGraph Server* 
+To start the server you may either run it in the foreground using:
+
+#+begin_src bash
+  ./bin/janusgraph-server.sh ./conf/gremlin-server/gremlin-server.yaml
+#+end_src
+
+Or run it in the background using: 
+#+begin_src bash
+  ./bin/janusgraph-server.sh start
+#+end_src
+
+5. *Terminate JanusGraph Server*
+To terminate the server, use *CTRL+C* if the server is running in the foreground. 
+If the server is running in the background, use:
+
+#+begin_src bash
+  ./bin/janusgraph-server.sh stop
+#+end_src
+
+> NOTE that running the server takes anywhere from 2GB-8GB of RAM. Please be sure that there is enough memory avaliable otherwise the server will crash
+
+* Usage
+:PROPERTIES:
+:CUSTOM_ID: usage
+:END:
+
+After installation, you can run:
+#+begin_src bash
+  kgwizard <command> [options]
+#+end_src
+
+** Transform Command
+:PROPERTIES:
+:CUSTOM_ID: transform-command
+:END:
+
+Purpose: Converts raw JSON from DataRaider files into an intermediate JSON structure, optionally performs RAG lookups, and can update the database.
+
+Example:
+#+begin_src bash
+  kgwizard transform ./input_data \
+    --output_dir ./results \
+    --output_file ./results/my_graph.graphml \
+    --substitutions "material:Material" "atmosphere:Atmosphere" \
+    --address ws://localhost \
+    --port 8182 \
+    --schema echem \
+    --graph_name g
+#+end_src
+
+Options:
+- ~--no_parallel~ — run sequentially.
+- ~--workers N~ — use a fixed number of parallel workers.
+- If neither ~--no_parallel~ nor ~--workers~ is set, kgwizard applies *dynamic parallel execution*.
+- ~--substitutions token:NodeType~ replaces the ~token~ in the prompt files (marked as ~{token}~)  by the unique nodes of ~NodeType~ found in the janus database. Note that lines in ~instructions~ that are contain a token and are not succesfully replaced are removed from the final prompt.
+- ~--schema~ allows to select a file containing node and edge types as defined in the graph schemas (~graphdb/schemas~). It can be also used to select between the already available schemas ~photo~, ~org~ and ~echem~.
+- ~--output-dir~ and ~--output-file~ allow to define the output directory of the intermediate JSONs and the path of the generated graph database respectively.
+
+** Parse Command
+:PROPERTIES:
+:CUSTOM_ID: parse-command
+:END:
+
+Purpose: Reads the intermediate JSON files (from ~transform~), constructs objects using the loaded schema, and uploads them into the database.
+
+Example:
+#+begin_src bash
+  kgwizard parse ./results \
+    --address ws://localhost \
+    --port 8182 \
+    --graph_name g \
+    --schema /path/to/custom_schema.py \
+    --output_file ./final_graph.graphml
+#+end_src
+
+This parses each ~.json~ in ~./results~ and updates JanusGraph. Also saves a ~.graphml~ file representing the final graph state.
+
+* Environment Variables
+:PROPERTIES:
+:CUSTOM_ID: environment-variables
+:END:
+
+- ~OPENAI_API_KEY~: This environment variable is needed to use the openai API when using the ~transform~ command.
+
+#+begin_src bash
+  export OPENAI_API_KEY="your-openai-api-key"
+#+end_src
+
+If unset, only the ~parse~ command will be available.
+
+* Extending KGWizard
+:PROPERTIES:
+:CUSTOM_ID: extending
+:END:
+
+This section explains how to
+
+1. *Start from the template schema* (~graphdb/schemas/echem.py~).
+2. *Add your own vertices / edges* in that same file (or in a copy).
+3. *Select the schema* via the CLI.
+4. *Tweak the LLM prompt instructions* if needed.
+
+** Use *echem.py* as your template
+:PROPERTIES:
+:CUSTOM_ID: template
+:END:
+
+The file =graphdb/schemas/echem.py= already contains:
+
+- The three *base* classes ~VertexBase~, ~EdgeBase~, ~Connection~.
+- A handful of generic chemistry vertices/edges (Reaction, Compound, ...).
+- Helper utilities (~apply_type_from_list~, ~build_node_from_dict~, ...).
+
+Because a schema must be *self-contained* (no cross-imports), *copy that file* and start editing it; or append your new classes at the bottom of it.
+Either way, keep everything in one file so the LLM can see the complete schema.
+
+** Add your domain-specific classes
+:PROPERTIES:
+:CUSTOM_ID: new-classes
+:END:
+
+
+Append only the *new* vertices and edges that are unique to your chemistry domain.  The generic bases are already in *echem.py*.
+
+Key points
+
+- *Class names become Gremlin labels*.  
+  If your vertex class is ~IrradiationConditions~, then the JSON must contain ~"label": "IrradiationConditions"~.
+
+- *EdgeBase generics link edges to the correct vertices*.
+  Example from the current schema:
+  #+begin_src python
+  @dataclass
+  class HasConditions(EdgeBase[Reaction, IrradiationConditions]):
+      pass
+  #+end_src
+  *source* must be a ~Reaction~, *target* must be an ~IrradiationConditions~.  Python type checkers catch mistakes, and the LLM sees these hints inside the ~{code}~ block of the prompt, so it generates the right connections.
+
+- *Extra fields on an edge become edge properties*.  
+  Edge ~HasPhotocatalyst~ illustrates this:
+  #+begin_src python
+  @dataclass
+  class HasPhotocatalyst(EdgeBase[Reaction, Compound]):
+      value: Optional[float] = None
+      unit:  Optional[str]  = None
+  #+end_src
+  The JSON for this edge must supply *value* and *unit* as numeric or text properties, not embed them in the vertex name.
+
+Example: adding a pressure vertex and edge
+
+#+begin_src python
+from dataclasses import dataclass
+from typing import Optional
+
+# new vertex
+@dataclass
+class Pressure(VertexBase):
+    unit:  str
+    value: float
+
+# new edge linking a reaction to that pressure
+@dataclass
+class HasPressure(EdgeBase[Reaction, Pressure]):
+    measured_with: Optional[str] = None   # e.g. "gauge", "transducer"
+#+end_src
+
+What the typing achieves
+
+1. *Parsing*  
+   Labels in the incoming JSON are looked up in ~VERTEX_CLASSES~ and ~EDGE_CLASSES~.  If they do not match, parsing fails, which protects the database from bad entries.
+
+2. *Prompt generation*  
+   The complete schema file is inserted into the prompt through the ~{code}~ token.  The LLM therefore sees every type hint and knows automatically that, for instance, ~Pressure.value~ must be convertible to float. This tight coupling of schema and prompt improves generation quality.
+
+Checklist
+
+- Pick clear, unique class names.  
+- Fix the generics on every edge, for example ~EdgeBase[Study, Reaction]~.  
+- Keep all code in one file so the LLM sees the entire schema.
+
+** Select your schema at run time
+:PROPERTIES:
+:CUSTOM_ID: schema-use
+:END:
+
+If you saved the modified file as, say, =graphdb/schemas/photo.py=:
+
+#+begin_src bash
+kgwizard transform ... --schema photo
+# or, from anywhere:
+kgwizard parse ... --schema /absolute/path/photo.py
+#+end_src
+
+Install the package in editable mode (~pip install -e .[kgwizard]~) so new schema files are auto-discovered.
+
+** Adjusting the LLM instructions
+:PROPERTIES:
+:CUSTOM_ID: prompt-edit
+:END:
+
+Prompt templates live in =kgwizard/prompt/assets/=:
+
+| File           | Role in the final prompt |
+|----------------+--------------------------|
+| =header=       | Text placed at the very top |
+| =instructions= | Bullet list consumed by the LLM |
+| =tail=         | Closing text plus magic tokens |
+
+Substitutions & RAG
+- Add ~--substitutions "token:VertexLabel"~ at the CLI. This *enables Retrieval-Augmented Generation (RAG)*: kgwizard queries the connected JanusGraph for *unique* vertex names of *VertexLabel* and replaces ~{token}~ with the *comma-separated list* it finds.
+- If a token is *not listed* in ~--substitutions~, or the query returns *no vertices*, every line in =instructions= still containing that token is *deleted* before the prompt is sent. This keeps the prompt compact and avoids confusing the model.
+
+Prompt assembly
+1. *Header* text.  
+2. *Instructions* (after the token-replacement / pruning step).  
+3. *Tail* text.  
+
+These three pieces are concatenated—blank line between each—to form the final system prompt delivered to the LLM.
+
+Magic tokens in the tail
+- ~{json}~  ⟶ replaced by the full input JSON block.  
+- ~{code}~  ⟶ replaced by the *entire* active schema file.
+
+The helper in =kgwizard/prompt/builder.py= performs these replacements automatically, so you never need to paste the JSON or schema yourself.
+
+* Contributing
+:PROPERTIES:
+:CUSTOM_ID: contributing
+:END:
+
+1. *Fork or clone* the repository.
+2. *Create a new branch* for your feature or fix.
+3. *Submit a pull request* after you test and finalize your changes.
+
+Contributions are welcomed for:
+- Adding new schemas or database adapters.
+- Improving performance or parallelism.
+- Enhancing RAG logic.
+- Adding additional LLMs connectors.
