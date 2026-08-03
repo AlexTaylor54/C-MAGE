@@ -1,9 +1,1 @@
-[submodule "MERMaid"]
-	path = MERMaid
-	url = https://github.com/aspuru-guzik-group/MERMaid.git
-[submodule "DECIMER-Image-Segmentation"]
-	path = DECIMER-Image-Segmentation
-	url = https://github.com/Kohulan/DECIMER-Image-Segmentation.git
-[submodule "MolScribe"]
-	path = MolScribe
-	url = https://github.com/thomas0809/MolScribe.git
+
