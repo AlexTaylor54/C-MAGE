@@ -1,0 +1,25 @@
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 5: 
+ * This Software is under the MIT License
+ * Refer to LICENSE or https://opensource.org/licenses/MIT for more information
+ * Written by ©Kohulan Rajan 2020
+: No such file or directory
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 6: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 7: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 8: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 9: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 10: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 11: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 12: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 13: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 14: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 15: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 16: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 17: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 18: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 19: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 20: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 21: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 22: from: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 23: import: command not found
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 27: syntax error near unexpected token `"ignore"'
+/opt/sge/crc/spool/d32cepyc230/job_scripts/419134: line 27: `warnings.filterwarnings("ignore")'
