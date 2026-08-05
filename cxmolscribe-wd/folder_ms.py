@@ -29,6 +29,9 @@ parser.add_argument("--output-dir", type=Path, default=DIS_DIR,
                     help="Directory for the classified images and completed spreadsheets.")
 parser.add_argument("--canvas", type=Path, default=DIS_DIR / "canvas.xlsx",
                     help="Empty workbook used as the template for low-confidence results.")
+parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE", "cpu"),
+                    help="torch device for MolScribe: cpu (default), mps on Apple Silicon, "
+                         "or cuda. Also read from CMAGE_DEVICE.")
 args = parser.parse_args()
 
 if not args.results_excel.is_file():
@@ -60,7 +63,8 @@ dis_worksheet = dis_workbook.active
 #Establishes the model to be used for translation
 from openpyxl.drawing.image import Image
 from molscribe import MolScribe
-device = torch.device("cpu")
+device = torch.device(args.device)
+print("Device = " + str(device))
 model = MolScribe(model_path, device)
 
 

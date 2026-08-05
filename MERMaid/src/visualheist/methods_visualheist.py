@@ -23,6 +23,26 @@ BASE_MODEL_ID = "shixuanleong/visualheist-base"
 LARGE_SAFETENSORS_PATH = "https://huggingface.co/shixuanleong/visualheist-large/resolve/main/model.safetensors" 
 BASE_SAFETENSORS_PATH = "https://huggingface.co/shixuanleong/visualheist-base/resolve/main/model.safetensors" 
 
+def select_device():
+    """Pick the best available torch device.
+
+    Order is CUDA, then Apple Silicon MPS, then CPU. Set CMAGE_DEVICE to
+    override, e.g. CMAGE_DEVICE=cpu when an MPS kernel is missing.
+
+    Florence-2 relies on a few operations that MPS does not implement. Export
+    PYTORCH_ENABLE_MPS_FALLBACK=1 to let those fall back to CPU instead of
+    raising; without it, drop to CMAGE_DEVICE=cpu.
+    """
+    override = os.environ.get("CMAGE_DEVICE")
+    if override:
+        return torch.device(override)
+    if torch.cuda.is_available():
+        return torch.device("cuda:0")
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def fixed_get_imports(filename: Union[str, os.PathLike]) -> list[str]:
     """Workaround to remove flash_attn from imports."""
     if not str(filename).endswith("modeling_florence2.py"):
@@ -128,14 +148,10 @@ def _create_model(model_id):
     #if not os.path.exists(safetensors_download_path):
     #    safetensors_download_path = hf_hub_download(repo_id=model_id, filename="model.safetensors")
     #state_dict = load_file(safetensors_download_path)
-    #4 lines below are new code, and added whole device_map
-#    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#    index_tensor = index_tensor.to(device)
-#    model.to(device)
-#    data = data.to(device)
+    device = select_device()
     with patch("transformers.dynamic_module_utils.get_imports", fixed_get_imports):
-        model = AutoModelForCausalLM.from_pretrained(model_id,revision="e36203e67a05b9dd66d1310fd3a217e8b334ab30", trust_remote_code=True, device_map="cuda:0")
-        processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True,device_map="cuda:0")
+        model = AutoModelForCausalLM.from_pretrained(model_id,revision="e36203e67a05b9dd66d1310fd3a217e8b334ab30", trust_remote_code=True, device_map=str(device))
+        processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
     return model, processor
 
 
@@ -166,14 +182,10 @@ def _pdf_to_figures_and_tables(pdf_path, output_dir, large_model):
     else:
         model, processor = _create_model(BASE_MODEL_ID) 
         print('model and processor is loaded')   
-    #4 lines below are new code, and added whole device_map
-    device = torch.device('cuda') #if torch.cuda.is_available() else 'cpu')
-#    index_tensor = index_tensor.to(device)
+    device = select_device()
     print("Device = " +str(device))
     model.to(device)
-#    index_tensor = index_tensor.to(device)
-#    data = data.to(device)
-    
+
     image_counter = 0
     for i, image in enumerate(images):
         annotation = _tf_id_detection(image, model, processor)
