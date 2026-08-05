@@ -176,7 +176,7 @@ for digit,fps in enumerate(file_paths):
                 #Adds the DECIMER-Image-Segmentation file path to the discard excel file
                 dis_worksheet.cell(row=dis_row_value, column=2).value = fps
 
-                worksheet.cell(row=dis_row_value, column=10).value = discard_classification
+                dis_worksheet.cell(row=dis_row_value, column=10).value = discard_classification
                 discard_counter += 1
 
                 #Appends molecule predictions to appropriate location on output spreadsheet
@@ -217,7 +217,7 @@ for digit,fps in enumerate(file_paths):
                 #Adds the DECIMER-Image-Segmentation file path to the discard excel file
                 dis_worksheet.cell(row=dis_row_value, column=2).value = fps
 
-                worksheet.cell(row=dis_row_value,column=10).value = discard_classification
+                dis_worksheet.cell(row=dis_row_value,column=10).value = discard_classification
                 discard_counter += 1
                 
                 #Appends molecule predictions to appropriate location on output spreadsheet
