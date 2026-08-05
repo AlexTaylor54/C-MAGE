@@ -166,7 +166,7 @@ for digit,fps in enumerate(file_paths):
                 mol = Chem.MolFromSmiles(smiles)
                 
                 dis_smiles_path = str(smiles) + ".png"
-                dis_combined = os.path.join(dis_folder, smiles_path)
+                dis_combined = os.path.join(dis_folder, dis_smiles_path)
                 dis_final_smiles_path: str =  os.path.abspath(dis_combined)
                 
                 mol_image = Draw.MolsToImage([mol])
@@ -207,7 +207,7 @@ for digit,fps in enumerate(file_paths):
                 mol = Chem.MolFromSmiles(smiles)
                 
                 dis_smiles_path = str(smiles) + ".png"
-                dis_combined = os.path.join(dis_folder, smiles_path)
+                dis_combined = os.path.join(dis_folder, dis_smiles_path)
                 dis_final_smiles_path: str =  os.path.abspath(dis_combined)
                 
                 mol_image = Draw.MolsToImage([mol])
