@@ -80,6 +80,11 @@ discard_counter = 0
 hc_folder = "highconfidence_images/"
 dis_folder = "lowconfidence_images/"
 
+#Neither directory is part of the repository, so create both before the first
+#rendered structure is saved.
+os.makedirs(hc_folder, exist_ok=True)
+os.makedirs(dis_folder, exist_ok=True)
+
 hc_row_value = 2
 dis_row_value = 2
 
