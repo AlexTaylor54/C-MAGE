@@ -22,6 +22,10 @@ BASE_dir = Path.home()
 imgdir = str(BASE_dir) + "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_VH_RESULTS/"
 outputdir = str(BASE_dir) + "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_DIS_RESULTS/"
 
+#The output directory is not part of the repository, so create it before the
+#first segment is written.
+os.makedirs(outputdir, exist_ok=True)
+
 #Only real image files are handed to the segmenter. Dotfiles (.gitkeep, NFS
 #silly-rename artifacts) and any stray non-image file are skipped, and the
 #listing is sorted so repeated runs process pages in the same order.
