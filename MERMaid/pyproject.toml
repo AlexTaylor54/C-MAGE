@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "MERMaid"
 version = "25.03"
 description = "Multimodal mining of chemical reactions from PDFs"
+requires-python = ">=3.10"
 dependencies = []
 authors = [
   { name = "Shi Xuan Leong", email = "shixuan.leong@gmail.com"}, 
@@ -46,8 +47,14 @@ visualheist  = "scripts.run_visualheist:main"
 kgwizard     = "src.kgwizard.__main__:main"
 mermaid      = "scripts.run_mermaid:main"
 
-[tool.setuptools]
-packages = { find = { where = [".", "src"] } }
+[tool.setuptools.packages.find]
+where = [".", "src"]
+# `include` is required. Without it, setuptools treats every directory in the
+# repository root as a candidate package and bakes whatever happens to be
+# lying around at install time -- pdfdir/, imgdir/, per-paper output dirs --
+# into the distribution. See MERMaid.egg-info/top_level.txt for what that
+# looked like in practice.
+include = ["scripts*", "visualheist*", "dataraider*", "kgwizard*"]
 
 [tool.setuptools.package-data]
 MERMaid = [
