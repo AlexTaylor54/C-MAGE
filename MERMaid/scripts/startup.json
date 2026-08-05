@@ -4,8 +4,8 @@
         "NEW_KEY1": "description of new key",
         "NEW_KEY2": "description of new_key2"
     },
-    "pdf_dir": "/C-MAGE/MERMaid/pdfdir/",
-    "image_dir": "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_VH_RESULTS",
+    "pdf_dir": "MERMaid/pdfdir",
+    "image_dir": "cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_VH_RESULTS",
     "json_dir": "/path/to/directory/to/store/json/output", 
     "graph_dir": "/path/to/directory/to/store/graph/files",
     "prompt_dir": "/path/to/directory/holding/prompts",

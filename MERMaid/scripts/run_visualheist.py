@@ -7,7 +7,16 @@ from visualheist.methods_visualheist import batch_pdf_to_figures_and_tables
 from pathlib import Path
 import time
 
-BASE_dir = Path.home() 
+#Relative paths in startup.json are resolved against the repository root, not
+#against $HOME. Absolute paths are passed through untouched, which the previous
+#string concatenation did not do.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def resolve_path(value, base=REPO_ROOT):
+    """Return an absolute Path, resolving relative values against base."""
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else (base / path)
+
 starttime= time.time()
 
 def load_config(config_file):
@@ -51,11 +60,10 @@ def main():
         config_path = package_dir / "scripts" / "startup.json"
         config = load_config(config_path) if config_path.exists() else {}
 
-    short_pdf_dir = Path(args.pdf_dir) if args.pdf_dir else Path(config.get("pdf_dir", "./pdfs"))
-    pdf_dir = str(BASE_dir) +str(short_pdf_dir)
-    image_dir = config.get('image_dir', "").strip()
-    short_image_dir = Path(args.image_dir) if args.image_dir else Path(config.get("image_dir") or config.get("default_image_dir", "./images"))
-    image_dir = str(BASE_dir) + str(short_image_dir)    
+    pdf_dir = str(resolve_path(args.pdf_dir or config.get("pdf_dir", "./pdfs")))
+    image_dir = str(resolve_path(
+        args.image_dir or config.get("image_dir") or config.get("default_image_dir", "./images")))
+    os.makedirs(image_dir, exist_ok=True)
     model_size = args.model_size or config.get('model_size', "base")
     print(f"Model size: {model_size}")
     use_large_model = model_size == "large"

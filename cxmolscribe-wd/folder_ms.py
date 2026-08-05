@@ -7,16 +7,42 @@ import pandas as pd
 import numpy as np
 import time
 import cv2
+import argparse
 from pathlib import Path
 from openpyxl import load_workbook
 from huggingface_hub import hf_hub_download
 
 
+#Every path defaults to a location derived from this file rather than from the
+#working directory, so this stage no longer has to be launched from
+#cxmolscribe-wd/ for its relative paths to resolve.
+#Arguments are parsed before the checkpoint is fetched so that --help does not
+#trigger a 1.1 GB download.
+CXMS_DIR = Path(__file__).resolve().parent
+DIS_DIR = CXMS_DIR / "DECIMER-Image-Segmentation"
+
+parser = argparse.ArgumentParser(
+    description="Translate segmented structure images into SMILES with CXMolScribe.")
+parser.add_argument("--results-excel", type=Path, default=DIS_DIR / "DIS_CMAGE_results.xlsx",
+                    help="Spreadsheet of segment paths written by stage 2 (DECIMER).")
+parser.add_argument("--output-dir", type=Path, default=DIS_DIR,
+                    help="Directory for the classified images and completed spreadsheets.")
+parser.add_argument("--canvas", type=Path, default=DIS_DIR / "canvas.xlsx",
+                    help="Empty workbook used as the template for low-confidence results.")
+args = parser.parse_args()
+
+if not args.results_excel.is_file():
+    raise SystemExit(
+        f"Stage 2 results not found: {args.results_excel}\n"
+        "Run pipeline_dis.py first, or pass --results-excel.")
+
+os.makedirs(args.output_dir, exist_ok=True)
+
 #Establishes model path for being run in this script
 model_path = hf_hub_download('yujieq/MolScribe', 'swin_base_char_aux_1m.pth')
 
 #Makes a dataframe out of the excel file created from the DECIMER-Image-Segmentation proccessing
-df = pd.read_excel("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
+df = pd.read_excel(args.results_excel)
 
 #Takes DIS file paths from previous step and puts them in a list for CXMolScribe usage
 file_paths = []
@@ -24,14 +50,12 @@ for paths in df["DIS Result File Paths"]:
     file_paths.append(paths)
 
 #Loads the DECIMER-Image-Segmentation output excel as a workbook that can be edited
-workbook = load_workbook("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
+workbook = load_workbook(args.results_excel)
 worksheet = workbook.active
-workbook.save("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
 
 #Loads an empty excel as a second workbook for low confidence values to be stored
-dis_workbook = load_workbook("DECIMER-Image-Segmentation/canvas.xlsx")
+dis_workbook = load_workbook(args.canvas)
 dis_worksheet = dis_workbook.active
-dis_workbook.save("DECIMER-Image-Segmentation/canvas.xlsx")
 
 #Establishes the model to be used for translation
 from openpyxl.drawing.image import Image
@@ -77,8 +101,8 @@ correct_counter = 0
 discard_counter = 0
 
 #Establishes a folder path for images to be stored depending on their confidence classification
-hc_folder = "highconfidence_images/"
-dis_folder = "lowconfidence_images/"
+hc_folder = str(args.output_dir / "highconfidence_images")
+dis_folder = str(args.output_dir / "lowconfidence_images")
 
 #Neither directory is part of the repository, so create both before the first
 #rendered structure is saved.
@@ -248,7 +272,7 @@ print("High Confidence of Correct Counter = " +str(correct_counter))
 print("Discard Counter = " +str(discard_counter))
 
 #Saves Workbook as new excel file which now has all CXMolScribe results from above
-workbook.save("DECIMER-Image-Segmentation/Completed_HighConfidence_CMAGE.xlsx")
-dis_workbook.save("DECIMER-Image-Segmentation/Completed_LowConfidence_CMAGE.xlsx")
+workbook.save(args.output_dir / "Completed_HighConfidence_CMAGE.xlsx")
+dis_workbook.save(args.output_dir / "Completed_LowConfidence_CMAGE.xlsx")
 
 print("Whole Pipeline Extracted!")
