@@ -1,0 +1,52 @@
+# C-MAGE stage 1 -- VisualHeist
+#
+# Extracts figures and tables from PDFs using the Florence-2-based VisualHeist
+# models (shixuanleong/visualheist-base, shixuanleong/visualheist-large).
+#
+#   conda env create -f envs/cmage-visualheist.yml
+#   conda activate cmage-visualheist
+#   pip install -e ./MERMaid --no-deps
+#
+# Reconstructed from the working `vh` environment on the CRC cluster; the raw
+# capture is kept at envs/legacy/vh_freeze.txt. Packages belonging to
+# subsystems C-MAGE does not use (vllm, the streamlit/fastapi webapp,
+# TensorFlow/Keras, RanDepict) were dropped. See envs/README.md.
+
+name: cmage-visualheist
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+
+  # pdf2image shells out to poppler's pdftoppm/pdftocairo binaries. Without
+  # poppler on PATH, stage 1 fails with PDFInfoNotInstalledError.
+  - poppler
+
+  - pip:
+      # --- PyTorch ------------------------------------------------------
+      # On Linux the default PyPI wheels are CUDA 12.8 builds, which is what
+      # the reference environment used. For a different CUDA version see
+      # https://pytorch.org/get-started/previous-versions/
+      - torch==2.8.0
+      - torchvision==0.23.0
+
+      # --- Florence-2 / VisualHeist -------------------------------------
+      # transformers is pinned deliberately. VisualHeist loads Florence-2 via
+      # trust_remote_code, and the model's vendored modelling_florence2.py
+      # does not work on transformers >= 4.50.
+      - transformers==4.38.0
+      - tokenizers==0.15.1
+      - safetensors==0.5.3
+      - accelerate==1.7.0
+      - huggingface_hub==0.36.0
+      # Imported by Florence-2's remote code.
+      - timm==0.4.12
+      - einops==0.8.1
+
+      # --- PDF and image IO ---------------------------------------------
+      - pdf2image==1.17.0
+      - pillow==11.3.0
+      - numpy==1.26.4

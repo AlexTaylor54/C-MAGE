@@ -1,0 +1,78 @@
+# C-MAGE stage 3 -- CXMolScribe
+#
+# Translates the segmented structure images from stage 2 into machine-readable
+# CXSMILES. CXMolScribe is a modified MolScribe that emits CXSMILES rather
+# than SMILES; it is NOT installed by this file. See envs/README.md, section
+# "Installing CXMolScribe".
+#
+#   conda env create -f envs/cmage-cxmolscribe.yml
+#   conda activate cmage-cxmolscribe
+#   pip install -e <path/to/CXMolScribe> --no-deps
+#
+# Reconstructed from the working `2ms` environment on the CRC cluster; the raw
+# capture is kept at envs/legacy/cxmolscribe_conda_explicit.txt.
+#
+# Note: envs/legacy/cxmolscribe_freeze.txt is NOT a usable source. It was
+# captured from the system Python rather than the activated `2ms` env, so it
+# describes RHEL system packages (rpm, selinux, subscription-manager, ...)
+# instead of the pipeline's dependencies.
+
+name: cmage-cxmolscribe
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - pip:
+      # --- PyTorch ------------------------------------------------------
+      # Linux PyPI wheels for 2.7.1 are CUDA 12.6 builds, matching the
+      # reference environment.
+      - torch==2.7.1
+      - torchvision==0.22.1
+
+      # --- MolScribe decoder --------------------------------------------
+      # MolScribe's decoder is built on OpenNMT-py 2.2.0, which in turn hard-
+      # pins the legacy torchtext 0.5.0. Both pins are load-bearing; newer
+      # versions of either break the checkpoint. torchtext 0.5.0 has no wheel
+      # and builds from an sdist, so this is the slowest part of the install.
+      - OpenNMT-py==2.2.0
+      - torchtext==0.5.0
+      - pyonmttok==1.37.1
+      - sentencepiece==0.2.0
+      - configargparse==1.7.1
+
+      # --- MolScribe encoder / preprocessing ----------------------------
+      - albumentations==1.1.0
+      - qudida==0.0.4
+      - timm==0.4.12
+      - SmilesPE==0.0.3
+
+      # --- Chemistry ----------------------------------------------------
+      - rdkit==2025.3.3
+
+      # --- Scientific stack ---------------------------------------------
+      - numpy==1.26.4
+      - pandas==2.3.0
+      - scipy==1.13.1
+      - scikit-image==0.25.2
+      - scikit-learn==1.7.0
+      - matplotlib==3.10.3
+      - opencv-python==4.11.0.86
+      # albumentations 1.1.0 requires the headless build alongside the
+      # regular one; both were present in the reference environment.
+      - opencv-python-headless==4.11.0.86
+
+      # --- Results bookkeeping ------------------------------------------
+      # folder_ms.py / pipeline_ms.py read the stage 2 .xlsx, write CXSMILES
+      # back into it, and embed the structure images.
+      - openpyxl==3.1.5
+      - pillow==11.2.1
+
+      # Used to fetch the MolScribe checkpoint (yujieq/MolScribe). This was
+      # missing from the captured `2ms` environment even though the stage 3
+      # scripts import it, so the capture was already slightly stale.
+      - huggingface_hub==0.36.0
+      - tqdm==4.67.1

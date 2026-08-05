@@ -1,0 +1,76 @@
+# C-MAGE stage 2 -- DECIMER Image Segmentation (macOS / Apple Silicon)
+#
+# macOS variant of cmage-decimer.yml. The only difference is the TensorFlow
+# package name: plain `tensorflow` has no arm64 wheel at 2.12, and the versions
+# that do (2.13+) ship a Keras API the vendored Mask R-CNN code does not run on.
+# `tensorflow-macos` 2.12.0 provides arm64 wheels against the same Keras 2.12,
+# so no downgrade is needed. It requires macOS 12.0 or later.
+#
+# Intel Macs are not supported: PyTorch has shipped no macOS x86_64 wheels since
+# 2.2.2, so stages 1 and 3 cannot be installed there at all.
+#
+# Segments individual chemical structure depictions out of the figure images
+# produced by stage 1, using the Mask R-CNN model in decimer_segmentation.
+#
+#   conda env create -f envs/cmage-decimer-macos.yml
+#   conda activate cmage-decimer
+#   pip install -e ./cxmolscribe-wd/DECIMER-Image-Segmentation --no-deps
+#
+# Reconstructed from the working `ds` environment on the CRC cluster; the raw
+# captures are kept at envs/legacy/decimer_freeze.txt and
+# envs/legacy/decimer_conda_export.yml. See envs/README.md.
+#
+# GPU note: this environment runs on CPU. `tensorflow-metal` can offload to the
+# Apple GPU, but it is version-sensitive and has a history of numerical
+# differences, so it is deliberately left out -- add it only after the CPU path
+# is known to give correct segmentations.
+
+name: cmage-decimer
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+
+  # Required by pdf2image (see the note in cmage-visualheist.yml).
+  - poppler
+
+  - pip:
+      # --- TensorFlow ---------------------------------------------------
+      # decimer_segmentation's Mask R-CNN implementation targets the TF 2.12
+      # Keras API and does not run on TF 2.13+.
+      - tensorflow-macos==2.12.0
+      - protobuf==4.25.6
+      - h5py==3.13.0
+
+      # --- Scientific stack ---------------------------------------------
+      # numpy is wedged: TensorFlow 2.12 requires < 1.24, and scipy 1.15.2
+      # requires >= 1.23.5. 1.23.5 is the only version that satisfies both,
+      # so there is no slack here -- bumping either tensorflow or scipy
+      # breaks the environment. This pin is also why stage 2 cannot share an
+      # environment with stages 1 and 3, which need numpy 1.26 for torch.
+      - numpy==1.23.5
+      - scipy==1.15.2
+      - scikit-image==0.24.0
+      - matplotlib==3.10.1
+      - pandas==2.2.3
+      - opencv-python==4.11.0.86
+
+      # --- PDF and image IO ---------------------------------------------
+      - pillow==11.2.1
+      - pdf2image==1.17.0
+      - PyPDF2==3.0.1
+      # Imported at the top of pipeline_dis.py but never called. Bumped from
+      # the captured 0.6.1, which ships no wheel; 0.6.3 does. Drop the import
+      # and this pin together.
+      - img2pdf==0.6.3
+
+      # --- Results bookkeeping ------------------------------------------
+      # pipeline_dis.py writes the segment paths to an .xlsx that stage 3 reads.
+      - openpyxl==3.1.5
+
+      # decimer_segmentation/mrcnn/visualize.py imports IPython.display at
+      # module scope, so it is needed even outside a notebook.
+      - ipython

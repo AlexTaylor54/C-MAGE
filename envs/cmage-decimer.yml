@@ -1,0 +1,66 @@
+# C-MAGE stage 2 -- DECIMER Image Segmentation
+#
+# Segments individual chemical structure depictions out of the figure images
+# produced by stage 1, using the Mask R-CNN model in decimer_segmentation.
+#
+#   conda env create -f envs/cmage-decimer.yml
+#   conda activate cmage-decimer
+#   pip install -e ./cxmolscribe-wd/DECIMER-Image-Segmentation --no-deps
+#
+# Reconstructed from the working `ds` environment on the CRC cluster; the raw
+# captures are kept at envs/legacy/decimer_freeze.txt and
+# envs/legacy/decimer_conda_export.yml. See envs/README.md.
+#
+# GPU note: TensorFlow 2.12 is built against CUDA 11.8 / cuDNN 8.6+. On the
+# cluster this is provided by `module load cuda/11.8 cudnn/8.9.3`. Elsewhere,
+# install cudatoolkit=11.8 and cudnn=8.6 yourself, or run on CPU.
+
+name: cmage-decimer
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+
+  # Required by pdf2image (see the note in cmage-visualheist.yml).
+  - poppler
+
+  - pip:
+      # --- TensorFlow ---------------------------------------------------
+      # decimer_segmentation's Mask R-CNN implementation targets the TF 2.12
+      # Keras API and does not run on TF 2.13+.
+      - tensorflow==2.12.0
+      - protobuf==4.25.6
+      - h5py==3.13.0
+
+      # --- Scientific stack ---------------------------------------------
+      # numpy is wedged: TensorFlow 2.12 requires < 1.24, and scipy 1.15.2
+      # requires >= 1.23.5. 1.23.5 is the only version that satisfies both,
+      # so there is no slack here -- bumping either tensorflow or scipy
+      # breaks the environment. This pin is also why stage 2 cannot share an
+      # environment with stages 1 and 3, which need numpy 1.26 for torch.
+      - numpy==1.23.5
+      - scipy==1.15.2
+      - scikit-image==0.24.0
+      - matplotlib==3.10.1
+      - pandas==2.2.3
+      - opencv-python==4.11.0.86
+
+      # --- PDF and image IO ---------------------------------------------
+      - pillow==11.2.1
+      - pdf2image==1.17.0
+      - PyPDF2==3.0.1
+      # Imported at the top of pipeline_dis.py but never called. Bumped from
+      # the captured 0.6.1, which ships no wheel; 0.6.3 does. Drop the import
+      # and this pin together.
+      - img2pdf==0.6.3
+
+      # --- Results bookkeeping ------------------------------------------
+      # pipeline_dis.py writes the segment paths to an .xlsx that stage 3 reads.
+      - openpyxl==3.1.5
+
+      # decimer_segmentation/mrcnn/visualize.py imports IPython.display at
+      # module scope, so it is needed even outside a notebook.
+      - ipython
