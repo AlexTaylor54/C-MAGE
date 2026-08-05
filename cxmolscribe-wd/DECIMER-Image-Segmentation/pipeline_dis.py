@@ -22,10 +22,21 @@ BASE_dir = Path.home()
 imgdir = str(BASE_dir) + "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_VH_RESULTS/"
 outputdir = str(BASE_dir) + "/C-MAGE/cxmolscribe-wd/DECIMER-Image-Segmentation/CMAGE_DIS_RESULTS/"
 
+#Only real image files are handed to the segmenter. Dotfiles (.gitkeep, NFS
+#silly-rename artifacts) and any stray non-image file are skipped, and the
+#listing is sorted so repeated runs process pages in the same order.
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+
 #Takes the images in the VisualHeist output directory and creates file paths for them
 file_paths = []
-for filename in os.listdir(imgdir):
+for filename in sorted(os.listdir(imgdir)):
+    if filename.startswith("."):
+        continue
     fp = os.path.join(imgdir,filename)
+    if not os.path.isfile(fp):
+        continue
+    if Path(filename).suffix.lower() not in IMAGE_SUFFIXES:
+        continue
     file_paths.append(fp)
 
 vh_file = 0
