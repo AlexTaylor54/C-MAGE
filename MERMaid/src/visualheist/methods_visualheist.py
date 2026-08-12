@@ -1,4 +1,5 @@
 import os
+import sys
 from pdf2image import convert_from_path
 from transformers import AutoProcessor
 from transformers import AutoModelForCausalLM 
@@ -60,13 +61,24 @@ def _pdf_to_image(pdf_path):
     :return: List of Image instances
     :rtype: list[PIL.Image]
     """
-    system = platform.system()
-    if system == "Windows":
-        poppler_path = os.environ.get("POPPLER_PATH")
-        if poppler_path is None:
-            raise RuntimeError("Please set the POPPLER_PATH environment variable to your Poppler binary directory.")
-        return convert_from_path(str(pdf_path), poppler_path=poppler_path)
-    return convert_from_path(str(pdf_path))
+    if platform.system() != "Windows":
+        return convert_from_path(str(pdf_path))
+
+    # On Windows, conda keeps poppler's executables in <env>/Library/bin, which
+    # is not on PATH when the interpreter is invoked directly. Find them rather
+    # than making the user set POPPLER_PATH by hand.
+    poppler_path = os.environ.get("POPPLER_PATH")
+    if not poppler_path:
+        candidate = Path(sys.prefix) / "Library" / "bin"
+        if (candidate / "pdftoppm.exe").exists():
+            poppler_path = str(candidate)
+    if not poppler_path:
+        raise RuntimeError(
+            "Poppler was not found. It is normally installed with the C-MAGE "
+            "environment; if you are running outside one, set the POPPLER_PATH "
+            "environment variable to the folder containing pdftoppm.exe."
+        )
+    return convert_from_path(str(pdf_path), poppler_path=poppler_path)
 
 
 def _tf_id_detection(image, model, processor):
