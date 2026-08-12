@@ -8,9 +8,10 @@
 #       --figures examples/stage2_input        skip stage 1, use existing figures
 #   ./run_pipeline.sh --device cpu             force CPU everywhere
 #
-# Each stage runs in its own conda environment, because the three cannot
-# coexist -- see envs/README.md. Results land in one directory per run so
-# repeated runs never overwrite each other.
+# Each stage runs in its own environment, because the three cannot coexist --
+# see envs/README.md. Works with either a conda install (./install.sh) or the
+# bundled micromamba from installers/install-macos.command. Results land in one
+# directory per run so repeated runs never overwrite each other.
 #
 # MERMaid/pipeline_sub.sh is the cluster equivalent and submits to SGE; use
 # this script anywhere else.
@@ -62,13 +63,42 @@ done
 
 wants() { case ",${STAGES}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
 
-if ! command -v conda >/dev/null 2>&1; then
-    echo "run_pipeline.sh: conda not found. Run ./install.sh first." >&2
-    exit 1
-fi
-# conda activate is a shell function and is unavailable until this is sourced.
-# shellcheck disable=SC1091
-source "$(conda info --base)/etc/profile.d/conda.sh"
+# Each stage runs under its own environment's interpreter rather than through
+# `conda activate`. Activation is a shell function that behaves differently
+# under conda, mamba and micromamba; calling the interpreter directly works
+# under all three. The environment's bin/ is prepended to PATH so pdf2image
+# can find poppler's pdftoppm.
+# Environment roots are probed as directories rather than by asking conda,
+# because `conda info --base` needs conda to be executable in the current
+# shell, which is not always true (restricted shells, cron, bundled installs).
+env_prefix() {
+    local name="$1" root base roots=()
+
+    roots+=("${REPO_ROOT}/.micromamba/envs")
+    [ -n "${MAMBA_ROOT_PREFIX:-}" ] && roots+=("${MAMBA_ROOT_PREFIX}/envs")
+    [ -n "${CONDA_EXE:-}" ] && roots+=("$(dirname "$(dirname "${CONDA_EXE}")")/envs")
+    if command -v conda >/dev/null 2>&1 && base="$(conda info --base 2>/dev/null)" && [ -n "$base" ]; then
+        roots+=("${base}/envs")
+    fi
+    roots+=("${HOME}/micromamba/envs" "${HOME}/miniforge3/envs" "${HOME}/miniconda3/envs" \
+            "${HOME}/anaconda3/envs" "/opt/miniconda3/envs" "/opt/anaconda3/envs")
+
+    for root in "${roots[@]}"; do
+        [ -x "${root}/${name}/bin/python" ] && { echo "${root}/${name}"; return 0; }
+    done
+    return 1
+}
+
+run_stage() {
+    local name="$1"; shift
+    local prefix
+    if ! prefix="$(env_prefix "$name")"; then
+        echo "run_pipeline.sh: environment '${name}' not found." >&2
+        echo "Run ./install.sh (or installers/install-macos.command) first." >&2
+        exit 1
+    fi
+    PATH="${prefix}/bin:${PATH}" "${prefix}/bin/python" "$@"
+}
 
 [ -n "$DEVICE" ] && export CMAGE_DEVICE="$DEVICE"
 
@@ -88,12 +118,10 @@ if wants 1; then
         exit 1
     fi
     log "Stage 1/3  VisualHeist -- Extracting Figures"
-    conda activate cmage-visualheist
-    python "${REPO_ROOT}/MERMaid/scripts/run_visualheist.py" \
+    run_stage cmage-visualheist "${REPO_ROOT}/MERMaid/scripts/run_visualheist.py" \
         --pdf_dir "$PDF_DIR" \
         --image_dir "${RUN_DIR}/01_VH_Figures" \
         --model_size "$MODEL_SIZE" 2>&1 | tee "${RUN_DIR}/logs/stage1.log"
-    conda deactivate
 else
     log "Stage 1/3  skipped"
 fi
@@ -107,23 +135,19 @@ if wants 2; then
         exit 1
     fi
     log "Stage 2/3  DECIMER-Image-Segmentation -- Segmenting Structures from ${STAGE2_INPUT}"
-    conda activate cmage-decimer
-    python "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/pipeline_dis.py" \
+    run_stage cmage-decimer "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/pipeline_dis.py" \
         --input-dir "$STAGE2_INPUT" \
         --output-dir "${RUN_DIR}/02_DIS_Segments" \
         --results-excel "$RESULTS_XLSX" 2>&1 | tee "${RUN_DIR}/logs/stage2.log"
-    conda deactivate
 fi
 
 if wants 3; then
     log "Stage 3/3  CXMolScribe -- CXSMILES Generation"
-    conda activate cmage-cxmolscribe
-    python "${REPO_ROOT}/cxmolscribe-wd/folder_ms.py" \
+    run_stage cmage-cxmolscribe "${REPO_ROOT}/cxmolscribe-wd/folder_ms.py" \
         --results-excel "$RESULTS_XLSX" \
         --output-dir "${RUN_DIR}/03_CXMS_Results" \
         --canvas "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/canvas.xlsx" \
         2>&1 | tee "${RUN_DIR}/logs/stage3.log"
-    conda deactivate
 fi
 
 log "Done"
