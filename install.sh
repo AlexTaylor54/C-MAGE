@@ -7,8 +7,8 @@
 #   ./install.sh decimer cxmolscribe
 #   ./install.sh --force            # recreate environments that already exist
 #
-# Stage 3 installs MolScribe from upstream at a pinned commit. To install from
-# a local checkout instead:
+# Stage 3 installs CXMolScribe from cxmolscribe-wd/MolScribe. To use a
+# different checkout:
 #
 #   CXMOLSCRIBE_SRC=~/src/MolScribe ./install.sh cxmolscribe
 #
@@ -16,15 +16,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Stage 3 uses MolScribe pinned to the commit recorded in the reference
-# environment (envs/legacy/vh_freeze.txt) and in this repository's own git
-# history, where MolScribe was originally a submodule at this commit.
-MOLSCRIBE_REF="7296a30413eb55436702011efdff78131f66d162"
-MOLSCRIBE_URL="git+https://github.com/thomas0809/MolScribe.git@${MOLSCRIBE_REF}"
-
-# Set CXMOLSCRIBE_SRC to install from a local checkout instead -- use this if
-# you have local modifications to MolScribe that are not in upstream.
-CXMOLSCRIBE_SRC="${CXMOLSCRIBE_SRC:-}"
+# CXMolScribe ships in the repository. Set CXMOLSCRIBE_SRC to install a
+# different checkout instead.
+CXMOLSCRIBE_SRC="${CXMOLSCRIBE_SRC:-${REPO_ROOT}/cxmolscribe-wd/MolScribe}"
 
 # Stage 2 needs a different TensorFlow package on macOS. Stages 1 and 3 use the
 # same spec everywhere.
@@ -55,8 +49,8 @@ Usage:
 
 Stages: visualheist, decimer, cxmolscribe
 
-Stage 3 installs MolScribe from upstream at a pinned commit. To install from a
-local checkout instead (e.g. if you have local modifications):
+Stage 3 installs CXMolScribe from cxmolscribe-wd/MolScribe. To use a different
+checkout:
 
   CXMOLSCRIBE_SRC=~/src/MolScribe ./install.sh cxmolscribe
 EOF
@@ -133,17 +127,12 @@ install_cxmolscribe() {
     create_env cmage-cxmolscribe cmage-cxmolscribe.yml
     conda activate cmage-cxmolscribe
 
-    if [ -n "$CXMOLSCRIBE_SRC" ]; then
-        if [ ! -d "$CXMOLSCRIBE_SRC" ]; then
-            echo "install.sh: CXMOLSCRIBE_SRC is set but '${CXMOLSCRIBE_SRC}' is not a directory" >&2
-            exit 1
-        fi
-        log "Installing MolScribe from local checkout ${CXMOLSCRIBE_SRC}"
-        pip install -e "$CXMOLSCRIBE_SRC" --no-deps
-    else
-        log "Installing MolScribe from upstream @ ${MOLSCRIBE_REF:0:8}"
-        pip install "molscribe @ ${MOLSCRIBE_URL}" --no-deps
+    if [ ! -d "$CXMOLSCRIBE_SRC" ]; then
+        echo "install.sh: CXMolScribe not found at '${CXMOLSCRIBE_SRC}'" >&2
+        exit 1
     fi
+    log "Installing CXMolScribe from ${CXMOLSCRIBE_SRC}"
+    pip install -e "$CXMOLSCRIBE_SRC" --no-deps
     python -c "import molscribe, torch; print('molscribe OK, torch', torch.__version__)"
     conda deactivate
 }

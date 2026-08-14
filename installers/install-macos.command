@@ -20,8 +20,6 @@ MAMBA_ROOT="${APP_DIR}/.micromamba"
 MAMBA_BIN="${MAMBA_ROOT}/bin/micromamba"
 LAUNCHER="${HOME}/Desktop/C-MAGE.app"
 
-MOLSCRIBE_REF="7296a30413eb55436702011efdff78131f66d162"
-
 # --------------------------------------------------------------------------
 # Presentation. This window is the entire user interface, so it should read
 # like a progress report rather than a build log.
@@ -163,7 +161,7 @@ step "Installing C-MAGE components"
 "$(env_python cmage-decimer)" -m pip install -q -e "${APP_DIR}/cxmolscribe-wd/DECIMER-Image-Segmentation" --no-deps \
     || die "Could not install the structure-finding component."
 "$(env_python cmage-cxmolscribe)" -m pip install -q \
-    "molscribe @ git+https://github.com/thomas0809/MolScribe.git@${MOLSCRIBE_REF}" --no-deps \
+    -e "${APP_DIR}/cxmolscribe-wd/MolScribe" --no-deps \
     || die "Could not install the structure-reading component."
 ok "Done"
 
