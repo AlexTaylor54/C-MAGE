@@ -78,6 +78,11 @@ for digit,fps in enumerate(file_paths):
             smiles = prediction["smiles"]
             confidence = prediction["confidence"]
 
+            #Retains the molecules figure connection within the naming of the CXSMILES translation
+            cut_start = fps.index("_:") + 2
+            cut_end = fps.index(".png")
+            translation_identifier = fps[cut_start:cut_end]
+
             if confidence >= 0.8431 and str(smiles) != "<invalid>":
                 worksheet.cell(row=row_value,column=10).value = correct_classification
                 correct_counter += 1
@@ -101,7 +106,7 @@ for digit,fps in enumerate(file_paths):
 
                 #Creates an image of the predicted SMILES string and organizes it into the excel sheet
             mol = Chem.MolFromSmiles(smiles)
-            smiles_path = str(smiles) +".png"
+            smiles_path = str(translation_identifier) +".png"
             mol_image = Draw.MolsToImage([mol])
             mol_image.save(smiles_path)
             pred_smiles_image = Image(smiles_path)

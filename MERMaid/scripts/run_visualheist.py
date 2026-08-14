@@ -7,9 +7,8 @@ from visualheist.methods_visualheist import batch_pdf_to_figures_and_tables
 from pathlib import Path
 import time
 
-#Relative paths in startup.json are resolved against the repository root, not
-#against $HOME. Absolute paths are passed through untouched, which the previous
-#string concatenation did not do.
+#Relative paths in startup.json are resolved against the repository root
+#Absolute paths are passed through untouched
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def resolve_path(value, base=REPO_ROOT):

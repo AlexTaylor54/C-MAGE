@@ -13,11 +13,7 @@ from openpyxl import load_workbook
 from huggingface_hub import hf_hub_download
 
 
-#Every path defaults to a location derived from this file rather than from the
-#working directory, so this stage no longer has to be launched from
-#cxmolscribe-wd/ for its relative paths to resolve.
-#Arguments are parsed before the checkpoint is fetched so that --help does not
-#trigger a 1.1 GB download.
+#Every path defaults to a location derived from this file rather than from the working directory
 CXMS_DIR = Path(__file__).resolve().parent
 DIS_DIR = CXMS_DIR / "DECIMER-Image-Segmentation"
 
@@ -67,12 +63,11 @@ device = torch.device(args.device)
 print("Device = " + str(device))
 model = MolScribe(model_path, device)
 
-
 #Creates the Appropriate Column Titles for CXMolScribe Output
 worksheet.cell(row=1,column=2).value = "File Path"
 worksheet.cell(row=1,column=4).value = "Image From File Path"
-worksheet.cell(row=1, column=5).value = "Image From Predicted SMILES"
-worksheet.cell(row=1, column=6).value = "Predicted SMILES"
+worksheet.cell(row=1, column=5).value = "Image From Predicted CXSMILES"
+worksheet.cell(row=1, column=6).value = "Predicted CXSMILES"
 worksheet.cell(row=1,column=7).value = "Nuances in Image"
 worksheet.cell(row=1,column=8).value = "Holistic Molecule Interpretation"
 worksheet.cell(row=1,column=9).value = "CXSMILES's Confidence Levels"
@@ -82,8 +77,8 @@ worksheet.cell(row=1,column=11).value = "Type of Mol"
 
 dis_worksheet.cell(row=1,column=2).value = "File Path"
 dis_worksheet.cell(row=1,column=4).value = "Image From File Path"
-dis_worksheet.cell(row=1, column=5).value = "Image From Predicted SMILES"
-dis_worksheet.cell(row=1, column=6).value = "Predicted SMILES"
+dis_worksheet.cell(row=1, column=5).value = "Image From Predicted CXSMILES"
+dis_worksheet.cell(row=1, column=6).value = "Predicted CXSMILES"
 dis_worksheet.cell(row=1,column=7).value = "Nuances in Image"
 dis_worksheet.cell(row=1,column=8).value = "Holistic Molecule Interpretation"
 dis_worksheet.cell(row=1,column=9).value = "CXSMILES's Confidence Levels"
@@ -108,8 +103,7 @@ discard_counter = 0
 hc_folder = str(args.output_dir / "highconfidence_images")
 dis_folder = str(args.output_dir / "lowconfidence_images")
 
-#Neither directory is part of the repository, so create both before the first
-#rendered structure is saved.
+#Creates sorted directories for rendered structure placement
 os.makedirs(hc_folder, exist_ok=True)
 os.makedirs(dis_folder, exist_ok=True)
 
@@ -119,7 +113,7 @@ dis_row_value = 2
 #For loop to run each file path through CXMolScribe and organizing the results
 for digit,fps in enumerate(file_paths):
     
-    #Makes graph/CXSMILES prediction of DECIMER-Image-Segmentation Image
+    #Makes CXSMILES prediction of DECIMER-Image-Segmentation Image
     #Uses established Confidence Intervals to sort molecules based on CXMolScribe confidence
     #If prediction falls into the high confidence classification its information is added to the high confidence Excel and image folder
     #If prediction falls into the discard classification its information is added to the discard  Excel and image folder
@@ -129,7 +123,11 @@ for digit,fps in enumerate(file_paths):
         prediction = model.predict_image_file(fps, return_atoms_bonds=True, return_confidence=True)
         smiles = prediction["smiles"]
         confidence = prediction["confidence"]
-
+        
+        #Retains the molecules figure connection within the naming of the CXSMILES translation
+        cut_start = fps.index("_:") + 2
+        cut_end = fps.index(".png")
+        translation_identifier = fps[cut_start:cut_end]
         
         #CXMolScribe code for high confidnece translation
         if confidence >= 0.8431 and str(smiles) != "<invalid>":
@@ -151,7 +149,7 @@ for digit,fps in enumerate(file_paths):
                 #Creates an image of the predicted CXSMILES string and organizes it into the excel sheet
                 mol = Chem.MolFromSmiles(smiles)
                 
-                smiles_path = str(smiles) + ".png"
+                smiles_path = str(translation_identifier) + ".png"
                 combined = os.path.join(hc_folder, smiles_path)
                 final_smiles_path: str =  os.path.abspath(combined)
                 
@@ -193,7 +191,7 @@ for digit,fps in enumerate(file_paths):
                 #Creates an image of the predicted CXSMILES string and organizes it into the excel sheet
                 mol = Chem.MolFromSmiles(smiles)
                 
-                dis_smiles_path = str(smiles) + ".png"
+                dis_smiles_path = str(translation_identifier) + ".png"
                 dis_combined = os.path.join(dis_folder, dis_smiles_path)
                 dis_final_smiles_path: str =  os.path.abspath(dis_combined)
                 
@@ -234,7 +232,7 @@ for digit,fps in enumerate(file_paths):
                 #Creates an image of the predicted SMILES string and organizes it into the excel sheet
                 mol = Chem.MolFromSmiles(smiles)
                 
-                dis_smiles_path = str(smiles) + ".png"
+                dis_smiles_path = str(translation_identifier) + ".png"
                 dis_combined = os.path.join(dis_folder, dis_smiles_path)
                 dis_final_smiles_path: str =  os.path.abspath(dis_combined)
                 

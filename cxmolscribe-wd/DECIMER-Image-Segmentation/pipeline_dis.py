@@ -42,14 +42,11 @@ if not os.path.isdir(imgdir):
         f"Input directory does not exist: {imgdir}\n"
         "Run stage 1 (VisualHeist) first, or pass --input-dir.")
 
-#The output directory is not part of the repository, so create it before the
-#first segment is written.
+#The output directory for DECIMER-Image-Segmentation is created
 os.makedirs(outputdir, exist_ok=True)
 os.makedirs(args.results_excel.parent, exist_ok=True)
 
-#Only real image files are handed to the segmenter. Dotfiles (.gitkeep, NFS
-#silly-rename artifacts) and any stray non-image file are skipped, and the
-#listing is sorted so repeated runs process pages in the same order.
+#Only real image files are handed to the segmenter
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
 
 #Takes the images in the VisualHeist output directory and creates file paths for them

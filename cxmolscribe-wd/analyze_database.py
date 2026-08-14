@@ -18,11 +18,11 @@ To expand this script beyond molecular images, some code will need to be comment
 
 #Creates a dataframe from an organized and annotated sheet
 #This organization is done by organize_category.py 
-df = pd.read_excel("DECIMER-Image-Segmentation/CMAGE_mol.xlsx")#CHANGE WITH EACH CLASSIFICATION
+df = pd.read_excel("DECIMER-Image-Segmentation/CMAGE_mol.xlsx")
 
 #Takes correctness categorization from manual annotations of user dataset and puts it in a list
 correctness_list = []
-for num,correctness in enumerate(df["Holistic Molecule Interpretation"]):#CHECK TO MAKE SURE THIS IS THE RIGHT COLUMN TITLE
+for num,correctness in enumerate(df["Holistic Molecule Interpretation"]):
     correctness_list.append(correctness)
     if correctness == "":
         print("Blank at " +str(num))#Identifies any ungraded segmentations

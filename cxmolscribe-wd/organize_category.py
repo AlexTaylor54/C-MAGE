@@ -26,7 +26,7 @@ for paths in df["DIS Result File Paths"]:
     file_paths.append(paths)
 
 smiles_list = []
-for smiles in df["Predicted SMILES"]:
+for smiles in df["Predicted CXSMILES"]:
     smiles_list.append(smiles)
 
 nuance_list = []
@@ -64,8 +64,8 @@ from openpyxl.drawing.image import Image
 #Creates the Appropriate Column Titles for CXMolScribe Output
 worksheet.cell(row=1,column=2).value = "File Path"
 worksheet.cell(row=1,column=4).value = "Image From File Path"
-worksheet.cell(row=1, column=5).value = "Image From Predicted SMILES"
-worksheet.cell(row=1, column=6).value = "Predicted SMILES"
+worksheet.cell(row=1, column=5).value = "Image From Predicted CXSMILES"
+worksheet.cell(row=1, column=6).value = "Predicted CXSMILES"
 worksheet.cell(row=1,column=7).value = "Nuances in Image"
 worksheet.cell(row=1,column=8).value = "Holistic Molecule Interpretation"
 worksheet.cell(row=1,column=9).value = "CXSMILES's Confidence Levels"

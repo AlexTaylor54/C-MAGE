@@ -73,9 +73,9 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 [ -n "$DEVICE" ] && export CMAGE_DEVICE="$DEVICE"
 
 RUN_DIR="${OUT_ROOT}/run_$(date +%Y%m%d-%H%M%S)"
-mkdir -p "${RUN_DIR}"/{01_figures,02_segments,03_results,logs}
+mkdir -p "${RUN_DIR}"/{01_VH_Figures,02_DIS_Segments,03_CXMS_Results,logs}
 
-RESULTS_XLSX="${RUN_DIR}/02_segments/DIS_CMAGE_results.xlsx"
+RESULTS_XLSX="${RUN_DIR}/02_DIS_Segments/DIS_CMAGE_results.xlsx"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
@@ -87,11 +87,11 @@ if wants 1; then
         echo "Put PDFs there, or pass --pdfs DIR." >&2
         exit 1
     fi
-    log "Stage 1/3  VisualHeist -- extracting figures"
+    log "Stage 1/3  VisualHeist -- Extracting Figures"
     conda activate cmage-visualheist
     python "${REPO_ROOT}/MERMaid/scripts/run_visualheist.py" \
         --pdf_dir "$PDF_DIR" \
-        --image_dir "${RUN_DIR}/01_figures" \
+        --image_dir "${RUN_DIR}/01_VH_Figures" \
         --model_size "$MODEL_SIZE" 2>&1 | tee "${RUN_DIR}/logs/stage1.log"
     conda deactivate
 else
@@ -99,35 +99,35 @@ else
 fi
 
 # Stage 2 reads stage 1's output unless --figures points somewhere else.
-STAGE2_INPUT="${FIGURES_DIR:-${RUN_DIR}/01_figures}"
+STAGE2_INPUT="${FIGURES_DIR:-${RUN_DIR}/01_VH_Figures}"
 
 if wants 2; then
     if [ ! -d "$STAGE2_INPUT" ]; then
         echo "run_pipeline.sh: figure directory does not exist: ${STAGE2_INPUT}" >&2
         exit 1
     fi
-    log "Stage 2/3  DECIMER -- segmenting structures from ${STAGE2_INPUT}"
+    log "Stage 2/3  DECIMER-Image-Segmentation -- Segmenting Structures from ${STAGE2_INPUT}"
     conda activate cmage-decimer
     python "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/pipeline_dis.py" \
         --input-dir "$STAGE2_INPUT" \
-        --output-dir "${RUN_DIR}/02_segments" \
+        --output-dir "${RUN_DIR}/02_DIS_Segments" \
         --results-excel "$RESULTS_XLSX" 2>&1 | tee "${RUN_DIR}/logs/stage2.log"
     conda deactivate
 fi
 
 if wants 3; then
-    log "Stage 3/3  CXMolScribe -- reading structures"
+    log "Stage 3/3  CXMolScribe -- CXSMILES Generation"
     conda activate cmage-cxmolscribe
     python "${REPO_ROOT}/cxmolscribe-wd/folder_ms.py" \
         --results-excel "$RESULTS_XLSX" \
-        --output-dir "${RUN_DIR}/03_results" \
+        --output-dir "${RUN_DIR}/03_CXMS_Results" \
         --canvas "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/canvas.xlsx" \
         2>&1 | tee "${RUN_DIR}/logs/stage3.log"
     conda deactivate
 fi
 
 log "Done"
-echo "Results:  ${RUN_DIR}/03_results"
-echo "  Completed_HighConfidence_CMAGE.xlsx   structures worth keeping"
-echo "  Completed_LowConfidence_CMAGE.xlsx    structures to review or discard"
+echo "Results:  ${RUN_DIR}/03_CXMS_Results"
+echo "  Completed_HighConfidence_CMAGE.xlsx   Structures Worth Keeping"
+echo "  Completed_LowConfidence_CMAGE.xlsx    Structures To Review or Discard"
 echo "Logs:     ${RUN_DIR}/logs"
