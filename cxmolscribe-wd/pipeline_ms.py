@@ -7,18 +7,40 @@ import pandas as pd
 import numpy as np
 import time
 import cv2
+import argparse
 from pathlib import Path
 from openpyxl import load_workbook
 from huggingface_hub import hf_hub_download
 
 
+#Every path defaults to a location derived from this file rather than from the working directory
+CXMS_DIR = Path(__file__).resolve().parent
+DIS_DIR = CXMS_DIR / "DECIMER-Image-Segmentation"
+
+parser = argparse.ArgumentParser(
+    description="Translate segmented structure images into CXSMILES, writing one "
+                "spreadsheet without splitting on confidence. Alternative to folder_ms.py.")
+parser.add_argument("--results-excel", type=Path, default=DIS_DIR / "DIS_CMAGE_results.xlsx",
+                    help="Spreadsheet of segment paths written by stage 2 (DECIMER).")
+parser.add_argument("--output-dir", type=Path, default=DIS_DIR,
+                    help="Directory for the rendered structures and the completed spreadsheet.")
+parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE", "cpu"),
+                    help="torch device for MolScribe: cpu (default), mps on Apple Silicon, "
+                         "or cuda. Also read from CMAGE_DEVICE.")
+args = parser.parse_args()
+
+if not args.results_excel.is_file():
+    raise SystemExit(
+        f"Stage 2 results not found: {args.results_excel}\n"
+        "Run pipeline_dis.py first, or pass --results-excel.")
+
+os.makedirs(args.output_dir, exist_ok=True)
 
 #Establishes model path for being run in this script
-
 model_path = hf_hub_download('yujieq/MolScribe', 'swin_base_char_aux_1m.pth')
 
 #Makes a dataframe out of the excel file created from the DECIMER-Image-Segmentation proccessing
-df = pd.read_excel("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
+df = pd.read_excel(args.results_excel)
 
 #Takes DECIMER-Image-Segmentation's output file paths and puts them in a list for CXMolScribe usage
 file_paths = []
@@ -26,16 +48,16 @@ for paths in df["DIS Result File Paths"]:
     file_paths.append(paths)
 
 #Loads the DECIMER-Image-Segmentations output excel as a workbook that can be edited
-workbook = load_workbook("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
+workbook = load_workbook(args.results_excel)
 worksheet = workbook.active
-workbook.save("DECIMER-Image-Segmentation/DIS_CMAGE_results.xlsx")
 
 
 from openpyxl.drawing.image import Image
 from molscribe import MolScribe
 
 #Establishes the model to be used for translation
-device = torch.device("cpu")
+device = torch.device(args.device)
+print("Device = " + str(device))
 model = MolScribe(model_path, device)
 
 
@@ -63,6 +85,10 @@ starttime= time.time()
 
 correct_counter = 0
 discard_counter = 0
+
+#Rendered structures go in their own folder rather than the working directory
+image_folder = str(args.output_dir / "structure_images")
+os.makedirs(image_folder, exist_ok=True)
 
 row_value = 2
 #For loop to run each file path through CXMolScribe and organizing the results
@@ -106,7 +132,8 @@ for digit,fps in enumerate(file_paths):
 
                 #Creates an image of the predicted SMILES string and organizes it into the excel sheet
             mol = Chem.MolFromSmiles(smiles)
-            smiles_path = str(translation_identifier) +".png"
+            smiles_path = os.path.abspath(
+                os.path.join(image_folder, str(translation_identifier) + ".png"))
             mol_image = Draw.MolsToImage([mol])
             mol_image.save(smiles_path)
             pred_smiles_image = Image(smiles_path)
@@ -136,6 +163,6 @@ print("High Confidence of Correct Counter = " +str(correct_counter))
 print("Discard Counter = " +str(discard_counter))
 
 #Saves Workbook as new excel file which now has all CXMolScribe results from above
-workbook.save("DECIMER-Image-Segmentation/Completed_CMAGE.xlsx")
+workbook.save(args.output_dir / "Completed_CMAGE.xlsx")
 
 print("Whole Pipeline Extracted!")
