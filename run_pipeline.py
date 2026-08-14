@@ -135,9 +135,9 @@ def main():
         os.environ["CMAGE_DEVICE"] = args.device
 
     run_dir = args.out / f"run_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    for sub in ("01_figures", "02_segments", "03_results", "logs"):
+    for sub in ("01_VH_Figures", "02_DIS_Segments", "03_CXMS_Results", "logs"):
         (run_dir / sub).mkdir(parents=True, exist_ok=True)
-    results_xlsx = run_dir / "02_segments" / "DIS_CMAGE_results.xlsx"
+    results_xlsx = run_dir / "02_DIS_Segments" / "DIS_CMAGE_results.xlsx"
 
     log(f"Run directory: {run_dir}")
 
@@ -146,30 +146,30 @@ def main():
             sys.exit(f"No PDFs found in {args.pdfs}\nPut PDFs there, or pass --pdfs.")
         run_stage(1, REPO_ROOT / "MERMaid" / "scripts" / "run_visualheist.py",
                   ["--pdf_dir", args.pdfs,
-                   "--image_dir", run_dir / "01_figures",
+                   "--image_dir", run_dir / "01_VH_Figures",
                    "--model_size", args.model_size], run_dir)
     else:
         log("Stage 1/3  skipped")
 
-    stage2_input = args.figures or (run_dir / "01_figures")
+    stage2_input = args.figures or (run_dir / "01_VH_Figures")
 
     if 2 in wanted:
         if not Path(stage2_input).is_dir():
             sys.exit(f"Figure directory does not exist: {stage2_input}")
         run_stage(2, REPO_ROOT / "cxmolscribe-wd" / "DECIMER-Image-Segmentation" / "pipeline_dis.py",
                   ["--input-dir", stage2_input,
-                   "--output-dir", run_dir / "02_segments",
+                   "--output-dir", run_dir / "02_DIS_Segments",
                    "--results-excel", results_xlsx], run_dir)
 
     if 3 in wanted:
         run_stage(3, REPO_ROOT / "cxmolscribe-wd" / "folder_ms.py",
                   ["--results-excel", results_xlsx,
-                   "--output-dir", run_dir / "03_results",
+                   "--output-dir", run_dir / "03_CXMS_Results",
                    "--canvas", REPO_ROOT / "cxmolscribe-wd" / "DECIMER-Image-Segmentation" / "canvas.xlsx"],
                   run_dir)
 
     log("Done")
-    print(f"Results:  {run_dir / '03_results'}")
+    print(f"Results:  {run_dir / '03_CXMS_Results'}")
     print("  Completed_HighConfidence_CMAGE.xlsx   structures worth keeping")
     print("  Completed_LowConfidence_CMAGE.xlsx    structures to review or discard")
     print(f"Logs:     {run_dir / 'logs'}")
