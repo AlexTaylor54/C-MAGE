@@ -13,8 +13,8 @@ into machine-readable CXSMILES.
 
 ## Install
 
-Needs ~7 GB of disk and Linux, Windows, or macOS 12+ on Apple Silicon. Intel
-Macs cannot run it — PyTorch has published no macOS x86_64 wheels since 2.2.2.
+Needs ~7 GB of disk and Linux or macOS 12+ on Apple Silicon. Intel Macs
+cannot run it — PyTorch has published no macOS x86_64 wheels since 2.2.2.
 A GPU is optional.
 
 Users will also need conda. If you don't have it, install
@@ -39,8 +39,7 @@ That builds all three environments and installs everything.
 ```
 
 The first run downloads ~2.4 GB of models. `./run_pipeline.sh --help` lists alternative run
-options — a different input folder, running only some stages, forcing CPU. 
-To Run on Windows use `run_pipeline.py`.
+options — a different input folder, running only some stages, forcing CPU.
 
 ## Results
 
