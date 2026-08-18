@@ -7,11 +7,11 @@
 #   ./run_pipeline.sh --stages 2,3 \
 #       --figures examples/stage2_input        skip stage 1, use existing figures
 #   ./run_pipeline.sh --device cpu             force CPU everywhere
+#   ./run_pipeline.sh --separated no           one spreadsheet instead of two
 #
 # Each stage runs in its own environment, because the three cannot coexist --
-# see envs/README.md. Works with either a conda install (./install.sh) or the
-# bundled micromamba from installers/install-macos.command. Results land in one
-# directory per run so repeated runs never overwrite each other.
+# see envs/README.md. Results land in one directory per run so repeated runs
+# never overwrite each other.
 #
 # MERMaid/pipeline_sub.sh is the cluster equivalent and submits to SGE; use
 # this script anywhere else.
@@ -25,6 +25,7 @@ FIGURES_DIR=""
 OUT_ROOT="${REPO_ROOT}/results"
 STAGES="1,2,3"
 MODEL_SIZE="base"
+SEPARATED="yes"
 DEVICE="${CMAGE_DEVICE:-}"
 
 usage() {
@@ -38,6 +39,9 @@ Options:
   --out DIR         Root for run directories       (default: results)
   --stages LIST     Comma-separated stages to run  (default: 1,2,3)
   --model-size S    VisualHeist model, base|large  (default: base)
+  --separated Y     yes: two spreadsheets split on confidence (folder_ms.py)
+                    no:  one spreadsheet, unsplit (pipeline_ms.py)
+                    (default: yes)
   --device DEV      torch device: cpu, mps, cuda   (default: auto-detect)
   -h, --help        Show this message
 
@@ -55,6 +59,7 @@ while [ $# -gt 0 ]; do
         --out)        OUT_ROOT="$2"; shift 2 ;;
         --stages)     STAGES="$2"; shift 2 ;;
         --model-size) MODEL_SIZE="$2"; shift 2 ;;
+        --separated)  SEPARATED="$(echo "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
         --device)     DEVICE="$2"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
         *) echo "run_pipeline.sh: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
@@ -62,6 +67,11 @@ while [ $# -gt 0 ]; do
 done
 
 wants() { case ",${STAGES}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
+
+case "$SEPARATED" in
+    yes|no) ;;
+    *) echo "run_pipeline.sh: --separated takes yes or no, got '${SEPARATED}'" >&2; exit 2 ;;
+esac
 
 # Each stage runs under its own environment's interpreter rather than through
 # `conda activate`. Activation is a shell function that behaves differently
@@ -94,7 +104,7 @@ run_stage() {
     local prefix
     if ! prefix="$(env_prefix "$name")"; then
         echo "run_pipeline.sh: environment '${name}' not found." >&2
-        echo "Run ./install.sh (or installers/install-macos.command) first." >&2
+        echo "Run ./install.sh first." >&2
         exit 1
     fi
     PATH="${prefix}/bin:${PATH}" "${prefix}/bin/python" "$@"
@@ -142,16 +152,30 @@ if wants 2; then
 fi
 
 if wants 3; then
-    log "Stage 3/3  CXMolScribe -- CXSMILES Generation"
-    run_stage cmage-cxmolscribe "${REPO_ROOT}/cxmolscribe-wd/folder_ms.py" \
-        --results-excel "$RESULTS_XLSX" \
-        --output-dir "${RUN_DIR}/03_CXMS_Results" \
-        --canvas "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/canvas.xlsx" \
-        2>&1 | tee "${RUN_DIR}/logs/stage3.log"
+    if [ "$SEPARATED" = "no" ]; then
+        # pipeline_ms.py writes a single spreadsheet and takes no --canvas,
+        # since it has no second workbook to fill.
+        log "Stage 3/3  CXMolScribe -- CXSMILES Generation (single output)"
+        run_stage cmage-cxmolscribe "${REPO_ROOT}/cxmolscribe-wd/pipeline_ms.py" \
+            --results-excel "$RESULTS_XLSX" \
+            --output-dir "${RUN_DIR}/03_CXMS_Results" \
+            2>&1 | tee "${RUN_DIR}/logs/stage3.log"
+    else
+        log "Stage 3/3  CXMolScribe -- CXSMILES Generation"
+        run_stage cmage-cxmolscribe "${REPO_ROOT}/cxmolscribe-wd/folder_ms.py" \
+            --results-excel "$RESULTS_XLSX" \
+            --output-dir "${RUN_DIR}/03_CXMS_Results" \
+            --canvas "${REPO_ROOT}/cxmolscribe-wd/DECIMER-Image-Segmentation/canvas.xlsx" \
+            2>&1 | tee "${RUN_DIR}/logs/stage3.log"
+    fi
 fi
 
 log "Done"
 echo "Results:  ${RUN_DIR}/03_CXMS_Results"
-echo "  Completed_HighConfidence_CMAGE.xlsx   Structures Worth Keeping"
-echo "  Completed_LowConfidence_CMAGE.xlsx    Structures To Review or Discard"
+if [ "$SEPARATED" = "no" ]; then
+    echo "  Completed_CMAGE.xlsx                  All Structures, Unsplit"
+else
+    echo "  Completed_HighConfidence_CMAGE.xlsx   Structures Worth Keeping"
+    echo "  Completed_LowConfidence_CMAGE.xlsx    Structures To Review or Discard"
+fi
 echo "Logs:     ${RUN_DIR}/logs"
