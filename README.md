@@ -13,7 +13,7 @@ into machine-readable CXSMILES.
 
 ## Install
 
-Needs ~7 GB of disk and Linux or macOS 12+ on Apple Silicon. Intel Macs
+Needs ~7 GB of disk and Linux, Windows, or macOS 12+ on Apple Silicon. Intel Macs
 cannot run it — PyTorch has published no macOS x86_64 wheels since 2.2.2.
 A GPU is optional.
 
@@ -40,6 +40,33 @@ That builds all three environments and installs everything.
 
 The first run downloads ~2.4 GB of models. `./run_pipeline.sh --help` lists alternative run
 options — a different input folder, running only some stages, forcing CPU.
+
+## Windows
+
+`install.sh` and `run_pipeline.sh` are bash, so Windows needs the environments
+built by hand. From the repository folder in Anaconda Prompt:
+
+```
+conda env create -f envs\cmage-visualheist.yml
+conda activate cmage-visualheist
+pip install -e .\MERMaid --no-deps
+conda deactivate
+```
+
+Repeat for the other two, changing the spec and the package each time:
+
+| Spec | Package |
+|---|---|
+| `envs\cmage-decimer.yml` | `.\cxmolscribe-wd\DECIMER-Image-Segmentation` |
+| `envs\cmage-cxmolscribe.yml` | `.\cxmolscribe-wd\MolScribe` |
+
+Then run the pipeline with the Python entry point instead:
+
+```
+python run_pipeline.py
+```
+
+It takes the same options as `run_pipeline.sh`.
 
 ## Results
 
