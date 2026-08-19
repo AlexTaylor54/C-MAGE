@@ -203,11 +203,20 @@ def load_model() -> modellib.MaskRCNN:
     Returns:
         modellib.MaskRCNN: MRCNN model with trained weights
     """
-    # Define directory with trained model weights
+    # Cache the weights under ~/.cache, next to where huggingface_hub keeps the
+    # other two C-MAGE models. Upstream stores them inside this package, which
+    # for an editable install means inside the repository, so re-cloning threw
+    # away 260 MB and downloaded it again.
     root_dir = os.path.split(__file__)[0]
-    model_path = os.path.join(root_dir, "mask_rcnn_molecule.h5")
-    # Download trained weights if needed
-    if not os.path.exists(model_path):
+    legacy_path = os.path.join(root_dir, "mask_rcnn_molecule.h5")
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "decimer")
+    model_path = os.path.join(cache_dir, "mask_rcnn_molecule.h5")
+    # Weights already downloaded to the old location are still used, so nobody
+    # who has the file today has to fetch it a second time.
+    if os.path.exists(legacy_path):
+        model_path = legacy_path
+    elif not os.path.exists(model_path):
+        os.makedirs(cache_dir, exist_ok=True)
         print("Downloading model weights...")
         url = "https://zenodo.org/record/10663579/files/mask_rcnn_molecule.h5?download=1"
         req = requests.get(url, allow_redirects=True)

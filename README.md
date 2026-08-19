@@ -102,6 +102,24 @@ python cxmolscribe-wd/analyze_database.py -- input NAME_OF_EXCEL.xlsx
 ```
 
 
+## Uninstall
+
+```bash
+rm -rf C-MAGE
+conda env remove -n cmage-visualheist
+conda env remove -n cmage-decimer
+conda env remove -n cmage-cxmolscribe
+```
+
+The models are cached outside the repository and survive the above, so they are
+not downloaded again if you reinstall. To remove them too (~2.4 GB):
+
+```bash
+rm -rf ~/.cache/huggingface/hub/models--shixuanleong--visualheist-base \
+       ~/.cache/huggingface/hub/models--yujieq--MolScribe \
+       ~/.cache/decimer
+```
+
 ---
 
 `MERMaid/` and `cxmolscribe-wd/DECIMER-Image-Segmentation/` are vendored copies
