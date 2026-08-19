@@ -17,6 +17,21 @@ from huggingface_hub import hf_hub_download
 CXMS_DIR = Path(__file__).resolve().parent
 DIS_DIR = CXMS_DIR / "DECIMER-Image-Segmentation"
 
+def select_device(requested=None):
+    """CUDA if present, otherwise CPU.
+
+    MPS is deliberately not auto-selected. MolScribe predicts one image at a
+    time, so the per-image transfer to the Apple GPU costs more than it saves:
+    measured 34.6s on MPS against 7.0s on CPU for the same 12 structures, with
+    identical predictions. Pass --device mps to use it anyway.
+    """
+    if requested:
+        return torch.device(requested)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 parser = argparse.ArgumentParser(
     description="Translate segmented structure images into SMILES with CXMolScribe.")
 parser.add_argument("--results-excel", type=Path, default=DIS_DIR / "DIS_CMAGE_results.xlsx",
@@ -25,9 +40,9 @@ parser.add_argument("--output-dir", type=Path, default=DIS_DIR,
                     help="Directory for the classified images and completed spreadsheets.")
 parser.add_argument("--canvas", type=Path, default=DIS_DIR / "canvas.xlsx",
                     help="Empty workbook used as the template for low-confidence results.")
-parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE", "cpu"),
-                    help="torch device for MolScribe: cpu (default), mps on Apple Silicon, "
-                         "or cuda. Also read from CMAGE_DEVICE.")
+parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE"),
+                    help="torch device: cuda, mps or cpu. Detected automatically "
+                         "when not given. Also read from CMAGE_DEVICE.")
 args = parser.parse_args()
 
 if not args.results_excel.is_file():
@@ -59,7 +74,7 @@ dis_worksheet = dis_workbook.active
 #Establishes the model to be used for translation
 from openpyxl.drawing.image import Image
 from molscribe import MolScribe
-device = torch.device(args.device)
+device = select_device(args.device)
 print("Device = " + str(device))
 model = MolScribe(model_path, device)
 

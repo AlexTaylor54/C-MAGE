@@ -17,6 +17,21 @@ from huggingface_hub import hf_hub_download
 CXMS_DIR = Path(__file__).resolve().parent
 DIS_DIR = CXMS_DIR / "DECIMER-Image-Segmentation"
 
+def select_device(requested=None):
+    """CUDA if present, otherwise CPU.
+
+    MPS is deliberately not auto-selected. MolScribe predicts one image at a
+    time, so the per-image transfer to the Apple GPU costs more than it saves:
+    measured 34.6s on MPS against 7.0s on CPU for the same 12 structures, with
+    identical predictions. Pass --device mps to use it anyway.
+    """
+    if requested:
+        return torch.device(requested)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 parser = argparse.ArgumentParser(
     description="Translate segmented structure images into CXSMILES, writing one "
                 "spreadsheet without splitting on confidence. Alternative to folder_ms.py.")
@@ -24,9 +39,9 @@ parser.add_argument("--results-excel", type=Path, default=DIS_DIR / "DIS_CMAGE_r
                     help="Spreadsheet of segment paths written by stage 2 (DECIMER).")
 parser.add_argument("--output-dir", type=Path, default=DIS_DIR,
                     help="Directory for the rendered structures and the completed spreadsheet.")
-parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE", "cpu"),
-                    help="torch device for MolScribe: cpu (default), mps on Apple Silicon, "
-                         "or cuda. Also read from CMAGE_DEVICE.")
+parser.add_argument("--device", default=os.environ.get("CMAGE_DEVICE"),
+                    help="torch device: cuda, mps or cpu. Detected automatically "
+                         "when not given. Also read from CMAGE_DEVICE.")
 args = parser.parse_args()
 
 if not args.results_excel.is_file():
@@ -56,7 +71,7 @@ from openpyxl.drawing.image import Image
 from molscribe import MolScribe
 
 #Establishes the model to be used for translation
-device = torch.device(args.device)
+device = select_device(args.device)
 print("Device = " + str(device))
 model = MolScribe(model_path, device)
 
