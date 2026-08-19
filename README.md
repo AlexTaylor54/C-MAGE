@@ -39,7 +39,7 @@ That builds all three environments and installs everything.
 ```
 
 The first run downloads ~2.4 GB of models. `./run_pipeline.sh --help` lists alternative run
-options — a different input folder, running only some stages, forcing CPU.
+options — a different input folder, running only some stages, forcing CPU, and having unseparated translation results
 
 ## Windows
 
