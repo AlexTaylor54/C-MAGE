@@ -82,7 +82,8 @@ for paths in file_paths:
     #For loop which creates an image from the DECIMER-Image-Segmentation and keeps its original document name in new image name
     for numeral,img in enumerate(segments):
         img_var = Image.fromarray(img)
-        image_pathy = "Image_DIS_:VH_File:"+str(name_without_extension)+ "_molecule_"+ str(numeral)+ ".png"
+        #Windows forbids ":" in filenames, so the separators are underscores.
+        image_pathy = "Image_DIS_VH_File_"+str(name_without_extension)+ "_molecule_"+ str(numeral)+ ".png"
         full_path = os.path.join(outputdir,image_pathy)
         img_var.save(full_path)
         #The image is saved with its respective file path in the output directory established above

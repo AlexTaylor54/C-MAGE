@@ -32,6 +32,19 @@ def select_device(requested=None):
     return torch.device("cpu")
 
 
+DIS_PREFIX = "Image_DIS_VH_File_"
+
+
+def strip_prefix(path):
+    """Name a rendered structure after the segment it came from.
+
+    Taken from the filename rather than by searching for a separator, so a
+    change to stage 2's naming cannot break this again.
+    """
+    stem = Path(path).stem
+    return stem[len(DIS_PREFIX):] if stem.startswith(DIS_PREFIX) else stem
+
+
 parser = argparse.ArgumentParser(
     description="Translate segmented structure images into SMILES with CXMolScribe.")
 parser.add_argument("--results-excel", type=Path, default=DIS_DIR / "DIS_CMAGE_results.xlsx",
@@ -140,9 +153,7 @@ for digit,fps in enumerate(file_paths):
         confidence = prediction["confidence"]
         
         #Retains the molecules figure connection within the naming of the CXSMILES translation
-        cut_start = fps.index("_:") + 2
-        cut_end = fps.index(".png")
-        translation_identifier = fps[cut_start:cut_end]
+        translation_identifier = strip_prefix(fps)
         
         #CXMolScribe code for high confidnece translation
         if confidence >= 0.8431 and str(smiles) != "<invalid>":
