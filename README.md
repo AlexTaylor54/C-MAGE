@@ -90,7 +90,7 @@ confidence value is also present in this row.
 Once a dataset's Excel sheet has been annotated it can be organized into segmentation classifications by `cxmolscribe-wd/organize_category.py`.  This can be done for any Excel sheet by running the following command.
 
 ```bash
-python cxmolscribe-wd/organize_category.py -- input NAME_OF_EXCEL.xlsx
+python cxmolscribe-wd/organize_category.py --input NAME_OF_EXCEL.xlsx
 ```
 
 Within this script, there are marked locations which will need to be modified based on which classification the user desires to sort.
@@ -98,7 +98,7 @@ Within this script, there are marked locations which will need to be modified ba
 To generate statistics on an annotated and graded C-MAGE output, run: 
 
 ```bash
-python cxmolscribe-wd/analyze_database.py -- input NAME_OF_EXCEL.xlsx
+python cxmolscribe-wd/analyze_database.py --input NAME_OF_EXCEL.xlsx
 ```
 
 

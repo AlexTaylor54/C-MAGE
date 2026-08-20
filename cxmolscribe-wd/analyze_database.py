@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import time
 import cv2
+import argparse
 from pathlib import Path
 from openpyxl import load_workbook
 
@@ -16,9 +17,25 @@ if the same nuances and classifications have been used as presented in this C-MA
 To expand this script beyond molecular images, some code will need to be commented out, these lines will be marked accordingly
 """
 
+#The default is derived from this file rather than the working directory, so
+#the script can be run from the repository root as the README shows.
+DIS_DIR = Path(__file__).resolve().parent / "DECIMER-Image-Segmentation"
+
+parser = argparse.ArgumentParser(
+    description="Report accuracy statistics over an annotated C-MAGE spreadsheet.")
+parser.add_argument("--input", type=Path, default=DIS_DIR / "CMAGE_mol.xlsx",
+                    help="Annotated spreadsheet to read, as written by organize_category.py.")
+args = parser.parse_args()
+
+if not args.input.is_file():
+    raise SystemExit(
+        f"Spreadsheet not found: {args.input}\n"
+        "Annotate a C-MAGE result sheet and sort it with organize_category.py "
+        "first, or pass --input.")
+
 #Creates a dataframe from an organized and annotated sheet
 #This organization is done by organize_category.py 
-df = pd.read_excel("DECIMER-Image-Segmentation/CMAGE_mol.xlsx")
+df = pd.read_excel(args.input)
 
 #Takes correctness categorization from manual annotations of user dataset and puts it in a list
 correctness_list = []
