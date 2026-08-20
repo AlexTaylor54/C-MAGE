@@ -13,12 +13,15 @@
 # see envs/README.md. Results land in one directory per run so repeated runs
 # never overwrite each other.
 #
-# MERMaid/pipeline_sub.sh is the cluster equivalent and submits to SGE; use
-# this script anywhere else.
+# On a cluster this submits itself to a GPU node rather than running on the
+# login node, which has no GPU. Pass --local to run here instead.
 #
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Kept whole so the queue gets exactly what was typed here.
+ORIGINAL_ARGS=("$@")
 
 PDF_DIR="${REPO_ROOT}/MERMaid/pdfdir"
 FIGURES_DIR=""
@@ -27,6 +30,7 @@ STAGES="1,2,3"
 MODEL_SIZE="base"
 SEPARATED="yes"
 DEVICE="${CMAGE_DEVICE:-}"
+LOCAL="no"
 
 usage() {
     cat <<'EOF'
@@ -43,6 +47,8 @@ Options:
                     no:  one spreadsheet, unsplit (pipeline_ms.py)
                     (default: yes)
   --device DEV      torch device: cpu, mps, cuda   (default: auto-detect)
+  --local           Run on this machine even when a GPU queue is available.
+                    Without it, a cluster login node submits to the queue
   -h, --help        Show this message
 
 Stages:
@@ -61,12 +67,14 @@ while [ $# -gt 0 ]; do
         --model-size) MODEL_SIZE="$2"; shift 2 ;;
         --separated)  SEPARATED="$(echo "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
         --device)     DEVICE="$2"; shift 2 ;;
+        --local)      LOCAL="yes"; shift ;;
         -h|--help)    usage; exit 0 ;;
         *) echo "run_pipeline.sh: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
     esac
 done
 
 wants() { case ",${STAGES}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
+log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 case "$SEPARATED" in
     yes|no) ;;
@@ -110,32 +118,36 @@ run_stage() {
     PATH="${prefix}/bin:${PATH}" "${prefix}/bin/python" "$@"
 }
 
-# Stage 2's TensorFlow links against a system CUDA 11.8 / cuDNN, unlike the
-# torch wheels in stages 1 and 3, which carry their own. On a module-based
-# cluster that means stage 2 drops to CPU on a GPU node unless those modules
-# are loaded, while stages 1 and 3 happily use the GPU -- so the pipeline looks
-# like it found the GPU when only two thirds of it did. Load them here, so a
-# direct or interactive run on a GPU node behaves like a submitted one.
-# Off a cluster there is no `module` command and this does nothing.
-load_cuda_modules() {
-    command -v nvidia-smi >/dev/null 2>&1 || return 0
-    if ! command -v module >/dev/null 2>&1; then
-        [ -r "${MODULESHOME:-/nonexistent}/init/bash" ] || return 0
-        . "${MODULESHOME}/init/bash" >/dev/null 2>&1 || return 0
-    fi
-    module load cuda/11.8 >/dev/null 2>&1 || true
-    module load cudnn/8.9.3 >/dev/null 2>&1 || true
+[ -n "$DEVICE" ] && export CMAGE_DEVICE="$DEVICE"
+
+# A cluster login node has no GPU, so running the pipeline here would quietly
+# do the whole thing on CPU. Hand it to the queue instead, so one command works
+# everywhere and nobody has to remember a second one for the cluster.
+#
+# Inside a job JOB_ID is already set; that is what stops this from recursing,
+# since pipeline_sub.sh runs this same script. A machine with its own GPU keeps
+# running locally, cluster or not.
+submit_to_queue() {
+    [ "$LOCAL" = "yes" ] && return 0
+    [ -n "${JOB_ID:-}" ] && return 0
+    command -v qsub >/dev/null 2>&1 || return 0
+    nvidia-smi -L >/dev/null 2>&1 && return 0
+
+    log "No GPU on this node -- submitting to the queue instead"
+    echo "Output goes to cmage.o<jobid> in ${REPO_ROOT}."
+    echo "Pass --local to run here on CPU anyway."
+    # -cwd in pipeline_sub.sh makes the job start wherever qsub was run, and it
+    # invokes ./run_pipeline.sh, so submit from the repository root.
+    cd "${REPO_ROOT}"
+    exec qsub MERMaid/pipeline_sub.sh ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
 }
 
-[ -n "$DEVICE" ] && export CMAGE_DEVICE="$DEVICE"
-[ "${DEVICE}" = "cpu" ] || load_cuda_modules
+submit_to_queue
 
 RUN_DIR="${OUT_ROOT}/run_$(date +%Y%m%d-%H%M%S)"
 mkdir -p "${RUN_DIR}"/{01_VH_Figures,02_DIS_Segments,03_CXMS_Results,logs}
 
 RESULTS_XLSX="${RUN_DIR}/02_DIS_Segments/DIS_CMAGE_results.xlsx"
-
-log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 log "Run directory: ${RUN_DIR}"
 
