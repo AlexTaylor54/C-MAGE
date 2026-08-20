@@ -110,7 +110,25 @@ run_stage() {
     PATH="${prefix}/bin:${PATH}" "${prefix}/bin/python" "$@"
 }
 
+# Stage 2's TensorFlow links against a system CUDA 11.8 / cuDNN, unlike the
+# torch wheels in stages 1 and 3, which carry their own. On a module-based
+# cluster that means stage 2 drops to CPU on a GPU node unless those modules
+# are loaded, while stages 1 and 3 happily use the GPU -- so the pipeline looks
+# like it found the GPU when only two thirds of it did. Load them here, so a
+# direct or interactive run on a GPU node behaves like a submitted one.
+# Off a cluster there is no `module` command and this does nothing.
+load_cuda_modules() {
+    command -v nvidia-smi >/dev/null 2>&1 || return 0
+    if ! command -v module >/dev/null 2>&1; then
+        [ -r "${MODULESHOME:-/nonexistent}/init/bash" ] || return 0
+        . "${MODULESHOME}/init/bash" >/dev/null 2>&1 || return 0
+    fi
+    module load cuda/11.8 >/dev/null 2>&1 || true
+    module load cudnn/8.9.3 >/dev/null 2>&1 || true
+}
+
 [ -n "$DEVICE" ] && export CMAGE_DEVICE="$DEVICE"
+[ "${DEVICE}" = "cpu" ] || load_cuda_modules
 
 RUN_DIR="${OUT_ROOT}/run_$(date +%Y%m%d-%H%M%S)"
 mkdir -p "${RUN_DIR}"/{01_VH_Figures,02_DIS_Segments,03_CXMS_Results,logs}
